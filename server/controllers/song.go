@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"app/db"
 	"app/config"
+	"app/db"
 	"app/models"
 
 	"github.com/gin-gonic/gin"
@@ -69,6 +69,7 @@ func ServeSong(r *gin.Engine) {
 		data, err := bodyReq.ToSong()
 		if err != nil {
 			c.String(http.StatusBadRequest, err.Error())
+			return
 		}
 
 		id := uuid.NewV4()
@@ -92,4 +93,44 @@ func ServeSong(r *gin.Engine) {
 		c.Redirect(http.StatusOK, "/song")
 	})
 
+	r.PUT("/song/:id", func(c *gin.Context) {
+		id := c.Param("id")
+
+		var bodyReq models.SongRequest
+
+		bodyReq.Name = c.PostForm("name")
+		bodyReq.Autor_id = c.PostForm("autor_id")
+		bodyReq.Year_launch = c.PostForm("year_launch")
+
+		var data models.Song
+		err := db.Database.First(&data, "id = ?", id).Error
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Data not Found",
+			})
+			return
+		}
+
+		// db.Database.Save(&models.Song{
+		// id: id,
+		// })
+
+		c.JSON(http.StatusOK, data)
+	})
+
+	r.DELETE("/song/:id", func(c *gin.Context) {
+		id := c.Param("id")
+
+		err := db.Database.Delete(&models.Song{}, "WHERE id = ?", id).Error
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Deletado com Sucesso",
+		})
+	})
 }
