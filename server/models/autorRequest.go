@@ -5,19 +5,26 @@ import (
 )
 
 type AutorRequest struct {
-	Name         string `json:"name"`
-	Profile_path string `json:"profile_path"`
-	Nationality  string `json:"nationality"`
+	Name				string		`json:"name"`
+	Profile_path		string		`json:"profile_path"`
+	Nationality			string		`json:"nationality"`
 }
 
 func (req *AutorRequest) ToAutor() (data Autor, err error) {
-	if req.Name == "" || req.Profile_path == "" || req.Nationality == "" {
-		err = errors.New("any of the values is null")
+	if req.Name == "" {
+		err = errors.New("'Name' is null")
 		return
+	} else {
+		data.Name = req.Name
 	}
 
-	data.Name = req.Name
-	data.Profile_path = req.Profile_path
-	data.Nationality = req.Nationality
+	if req.Profile_path != "" {
+		data.Profile_path = req.Profile_path
+	}
+
+	if req.Nationality != "" {
+		data.Nationality = req.Nationality
+	}
+
 	return
 }

@@ -3,8 +3,8 @@ package controllers
 import (
 	"net/http"
 
-	"app/db"
 	"app/models"
+	"app/db"
 
 	"github.com/gin-gonic/gin"
 )
@@ -16,8 +16,9 @@ func ServeAutor(r *gin.Engine) {
 		err := db.Database.Model(&models.Autor{}).Preload("Songs").Find(&data).Error
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Data not Found",
+				"error": err.Error(),
 			})
+			return
 		}
 
 		c.JSON(http.StatusOK, data)
@@ -41,23 +42,79 @@ func ServeAutor(r *gin.Engine) {
 	r.POST("/autor", func(c *gin.Context) {
 		var bodyReq models.AutorRequest
 
-		bodyReq.Name = c.PostForm("name")
-		bodyReq.Profile_path = c.PostForm("profile_path")
-		bodyReq.Nationality = c.PostForm("nationality")
+		if err := c.ShouldBindJSON(&bodyReq); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
 
 		data, err := bodyReq.ToAutor()
 		if err != nil {
-			c.String(http.StatusBadRequest, err.Error())
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
 			return
 		}
 
 		err = db.Database.Create(&data).Error
 		if err != nil {
-			c.String(http.StatusInternalServerError, "Data not Saved")
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
 			return
 		}
 
-		c.Redirect(http.StatusOK, "/autor")
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Succesfully Created",
+		})
 	})
 
+	r.PUT("/autor/:id", func(c *gin.Context) {
+		id := c.Param("id")
+
+		var data models.Autor
+		err := db.Database.First(&data, "id = ?", id).Error
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+
+		var bodyReq models.AutorRequest
+		if err := c.ShouldBindJSON(&bodyReq); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+
+		if err := db.Database.Model(&data).Updates(bodyReq).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Succesfully Created",
+		})
+	})
+
+	r.DELETE("/autor/:id", func(c *gin.Context) {
+		id := c.Param("id")
+
+		err := db.Database.Where("id = ?", id).Delete(&models.Autor{}).Error
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Data not Found",
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Succesfully Deleted '" + id + "'",
+		})
+	} )
 }

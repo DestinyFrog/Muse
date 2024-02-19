@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"app/config"
 	"app/db"
+	"app/config"
 	"app/models"
 
 	"github.com/gin-gonic/gin"
@@ -18,7 +18,9 @@ func ServeSong(r *gin.Engine) {
 		var data []models.Song
 		err := db.Database.Model(&models.Song{}).Preload("Autor").Find(&data).Error
 		if err != nil {
-			c.String(http.StatusInternalServerError, "Data not Found")
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
 			return
 		}
 
@@ -32,7 +34,7 @@ func ServeSong(r *gin.Engine) {
 		err := db.Database.Model(&models.Song{}).Preload("Autor").First(&data, "id = ?", id).Error
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Data not Found",
+				"error": err.Error(),
 			})
 			return
 		}
@@ -56,54 +58,48 @@ func ServeSong(r *gin.Engine) {
 		c.Header("Content-Type", "audio/mpeg")
 		c.Header("Content-Length", "0")
 
-		c.File(config.Config.Data_Files_Folder + data.File_path)
+		c.File( fmt.Sprintf(config.Config.Data_Files_Folder, data.File_path) )
 	})
 
 	r.POST("/song", func(c *gin.Context) {
 		var bodyReq models.SongRequest
 
-		bodyReq.Name = c.PostForm("name")
-		bodyReq.Autor_id = c.PostForm("autor_id")
-		bodyReq.Year_launch = c.PostForm("year_launch")
-
-		data, err := bodyReq.ToSong()
-		if err != nil {
-			c.String(http.StatusBadRequest, err.Error())
+		if err := c.ShouldBindJSON(&bodyReq); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
 			return
 		}
 
-		id := uuid.NewV4()
-		data.Id = id
+		data, err := bodyReq.ToSong()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+
+		data.Id = uuid.NewV4()
 		data.File_path = fmt.Sprintf("%s.mp3", data.Id)
 
 		err = db.Database.Create(&data).Error
 		if err != nil {
-			c.String(http.StatusInternalServerError, "Data not Saved")
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
 			return
 		}
 
-		file, err := c.FormFile("file")
-		if err != nil {
-			c.String(http.StatusBadRequest, err.Error())
-			return
-		}
-
-		c.SaveUploadedFile(file, config.Config.Data_Files_Folder+data.File_path)
-
-		c.Redirect(http.StatusOK, "/song")
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Succesfully Created",
+		})
 	})
 
-	r.PUT("/song/:id", func(c *gin.Context) {
+	r.POST("/song/:id/file", func(c *gin.Context) {
 		id := c.Param("id")
 
-		var bodyReq models.SongRequest
-
-		bodyReq.Name = c.PostForm("name")
-		bodyReq.Autor_id = c.PostForm("autor_id")
-		bodyReq.Year_launch = c.PostForm("year_launch")
-
 		var data models.Song
-		err := db.Database.First(&data, "id = ?", id).Error
+		err := db.Database.Model(&models.Song{}).Preload("Autor").First(&data, "id = ?", id).Error
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Data not Found",
@@ -111,9 +107,46 @@ func ServeSong(r *gin.Engine) {
 			return
 		}
 
-		// db.Database.Save(&models.Song{
-		// id: id,
-		// })
+		file, err := c.FormFile("file")
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+
+		c.SaveUploadedFile(file, config.Config.Data_Files_Folder+data.File_path)
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Succesfully Uploaded File",
+		})
+	})
+
+	r.PUT("/song/:id", func(c *gin.Context) {
+		id := c.Param("id")
+
+		var data models.Song
+		err := db.Database.First(&data, "id = ?", id).Error
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+
+		var bodyReq models.SongRequest
+		if err := c.ShouldBindJSON(&bodyReq); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+
+		if err := db.Database.Model(&data).Updates(bodyReq).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
 
 		c.JSON(http.StatusOK, data)
 	})
@@ -121,7 +154,7 @@ func ServeSong(r *gin.Engine) {
 	r.DELETE("/song/:id", func(c *gin.Context) {
 		id := c.Param("id")
 
-		err := db.Database.Delete(&models.Song{}, "WHERE id = ?", id).Error
+		err := db.Database.Where("id = ?", id).Delete(&models.Song{}).Error
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err.Error(),
@@ -130,7 +163,7 @@ func ServeSong(r *gin.Engine) {
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"message": "Deletado com Sucesso",
+			"message": "Succesfully Deleted '" + id + "'",
 		})
 	})
 }
