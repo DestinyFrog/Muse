@@ -90,9 +90,7 @@ func ServeSong(r *gin.Engine) {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Succesfully Created",
-		})
+		c.JSON(http.StatusOK, data)
 	})
 
 	r.POST("/song/:id/file", func(c *gin.Context) {

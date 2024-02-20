@@ -22,6 +22,9 @@ func (o *Application) Initialize() {
 	corsConfig := cors.DefaultConfig()
 	// config.AllowOrigins = []string{"http://0.0.0.0"}
 	corsConfig.AllowAllOrigins = true
+	// corsConfig.AllowHeaders = []string{
+		// ""
+	// }
 
 	o.Server.Use(cors.New(corsConfig))
 

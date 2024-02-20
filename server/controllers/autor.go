@@ -3,8 +3,8 @@ package controllers
 import (
 	"net/http"
 
-	"app/models"
 	"app/db"
+	"app/models"
 
 	"github.com/gin-gonic/gin"
 )
@@ -65,9 +65,7 @@ func ServeAutor(r *gin.Engine) {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Succesfully Created",
-		})
+		c.JSON(http.StatusOK, data)
 	})
 
 	r.PUT("/autor/:id", func(c *gin.Context) {
@@ -116,5 +114,5 @@ func ServeAutor(r *gin.Engine) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "Succesfully Deleted '" + id + "'",
 		})
-	} )
+	})
 }
