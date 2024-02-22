@@ -58,7 +58,7 @@ func ServeSong(r *gin.Engine) {
 		c.Header("Content-Type", "audio/mpeg")
 		c.Header("Content-Length", "0")
 
-		c.File( fmt.Sprintf(config.Config.Data_Files_Folder, data.File_path) )
+		c.File( fmt.Sprintf("%s%s", config.Config.Data_Files_Folder, data.File_path) )
 	})
 
 	r.POST("/song", func(c *gin.Context) {
